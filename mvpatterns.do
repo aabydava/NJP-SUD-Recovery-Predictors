@@ -41,29 +41,71 @@ cd "P:\Products\Papers\Kid's Papers\Kid's SUD Recovery Predictors\Analysis\NJP-S
 
 use "data\SUD_Recov_Pred_WIDE.dta", clear  
 
-
+mvpatterns subdsm7 subdsm8 subdsm9 subdsm10 subdsm11 
+mvpatterns subdsm8 subdsm9 subdsm10 subdsm11 subdsm12 
 mvpatterns subdsm9 subdsm10 subdsm11 subdsm12 subdsm13
 
-*NOTE: FUP10 is the aids subsample
+*NOTE: FUP7, FUP8, FUP10 contain only the aids subsample
 
+* count of non-missing values for subdsm *
+egen cnt1 = rownonmiss(subdsm7 subdsm8 subdsm9 subdsm10 subdsm11)  
+egen cnt2 = rownonmiss(subdsm8 subdsm9 subdsm10 subdsm11 subdsm12) 
+egen cnt3 = rownonmiss(subdsm9 subdsm10 subdsm11 subdsm12 subdsm13) 
 
-mvpatterns subdsm9 subdsm11 subdsm12 subdsm13
+tab cnt1
+tab cnt2 
+tab cnt3
 
-* Amelie wants to go back to FUP 7? *
-mvpatterns subdsm7 subdsm8 subdsm9 subdsm10 subdsm11 subdsm12 subdsm13
+* define complete as having data on 4/5 interviews *
+gen complete1 = 1 if cnt1 >=4
+gen complete2 = 1 if cnt2 >=4
+gen complete3 = 1 if cnt3 >=4
 
-gen subdsm_prev = .
-	replace subdsm_prev = 1 if subdsm0 == 1 | subdsm1 == 1 | subdsm2 == 1 | subdsm3 == 1 | subdsm4 == 1 | subdsm5 == 1 | subdsm6 == 1
+tab complete1
+tab complete2
+tab complete3
 
+count if complete3==1
+count if complete3==. & complete2==1
+count if complete1==1 & complete3==. & complete2==.
 
-gen complete1 = 1 if subdsm9 !=. & subdsm10 !=. & subdsm11 !=. & subdsm12 !=. & subdsm13 !=. 
-gen complete2 = 1 if subdsm9 !=. & subdsm11 !=. & subdsm12 !=. & subdsm13 !=. 
+* we also need to figure out who previously had a SUD in adolescence??
+* will need to figure out how to exactly define this. need others to weigh in
+* to start, let's pick an age (Leah thinks 19 is ok, since SUD is measured past year) as cut-off
+* for baseline, use reported age so we get everyone
+* we only need to go through FUP 6, no participants <= 19 at FUP 7 or beyond
 
+clonevar aoi0 = age_base
 
-count if complete1 == 1 & (subdsm9==0 & subdsm10==0 & subdsm11==0 & subdsm12==0 & subdsm13==0)
-count if complete1 == 1 & (subdsm9==1 | subdsm10==1 | subdsm11==1 | subdsm12==1 | subdsm13==1)
+forvalues i = 0/6 {
+	gen adol`i' = 1 if aoi`i' <= 19
 
+}
 
+gen subdsm_adol = .
+forvalues i= 0/6 {
+	replace subdsm_adol = 1 if subdsm`i' == 1 & adol`i' == 1
+}
+
+keep if subdsm_adol == 1
+
+* now check counts for only those with a SUD in adolescence *
+count if complete3==1
+count if complete3==. & complete2==1
+count if complete1==1 & complete3==. & complete2==.
+
+* generate recovery from SUD *
+gen subdsm_recov = .
+	replace subdsm_recov = 1 if complete3==1 & (subdsm9 == 0 & subdsm10 == 0 & subdsm11 == 0 & subdsm12 == 0 & subdsm13 == 0)
+	replace subdsm_recov = 1 if complete3==1 & (subdsm9 == . & subdsm10 == 0 & subdsm11 == 0 & subdsm12 == 0 & subdsm13 == 0)
+	replace subdsm_recov = 1 if complete3==1 & (subdsm9 == 0 & subdsm10 == . & subdsm11 == 0 & subdsm12 == 0 & subdsm13 == 0)
+	replace subdsm_recov = 1 if complete3==1 & (subdsm9 == 0 & subdsm10 == 0 & subdsm11 == . & subdsm12 == 0 & subdsm13 == 0)
+	replace subdsm_recov = 1 if complete3==1 & (subdsm9 == 0 & subdsm10 == 0 & subdsm11 == 0 & subdsm12 == . & subdsm13 == 0)
+	replace subdsm_recov = 1 if complete3==1 & (subdsm9 == 0 & subdsm10 == 0 & subdsm11 == 0 & subdsm12 == 0 & subdsm13 == .)
+
+	replace subdsm_recov = 0 if complete3==1 & (subdsm9 == 1 | subdsm10 == 1 | subdsm11 == 1 | subdsm12 == 1 | subdsm13 == 1)
+
+label var subdsm_recov "SUD Recovery"
 
 
 
